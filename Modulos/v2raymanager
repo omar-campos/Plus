@@ -125,78 +125,214 @@ sed -i "44 s;$dm;$px;g" /etc/v2ray/config.json
     }
     addusr () {
     clear
-    echo -e "\E[44;1;37m            ADICIONAR USUARIO | UUID V2RAY             \E[0m"
-    ##DIAS
-    valid=$(date '+%C%y-%m-%d' -d " +31 days")		  
-    ##CORREO		  
-    MAILITO=$(cat /dev/urandom | tr -dc '[:alnum:]' | head -c 10)
-    ##ADDUSERV2RAY		  
-    UUID=`uuidgen`	  
-    sed -i '13i\           \{' /etc/v2ray/config.json
-    sed -i '14i\           \"alterId": 0,' /etc/v2ray/config.json
-    sed -i '15i\           \"id": "'$UUID'",' /etc/v2ray/config.json
-    sed -i '16i\           \"email": "'$MAILITO'@gmail.com"' /etc/v2ray/config.json
-    sed -i '17i\           \},' /etc/v2ray/config.json
-    echo ""
-    while true; do
-    echo -ne "\e[91m >> Digite um usuário: \033[1;92m"
-         read -p ": " nick
-         nick="$(echo $nick|sed -e 's/[^a-z0-9 -]//ig')"
-         if [[ -z $nick ]]; then
-         echo -e "$msg17" && continue
-         elif [[ "${#nick}" -lt "2" ]]; then
-         echo -e "$msg02" && continue
-         elif [[ "${#nick}" -gt "20" ]]; then
-         echo -e "$msg03" && continue
-         fi
-         break
+   
+    echo -e "\E[44;1;37m          ➤ ADICIONAR USUARIO UUID V2RAY ➤         \E[0m\n"
+
+    while true;
+    do
+        # UUID automático o manual
+        echo -e "\033[1;33m[1]\033[0m UUID Automático"
+        echo -e "\033[1;33m[2]\033[0m UUID Manual"
+        echo -e "\033[1;31m[0]\033[0m Volver al menú principal"
+        echo -ne "\n\033[1;37mElige una opción: \033[1;92m"
+        read opc
+        [[ "$opc" = "0" ]] && fun_v2raymanager
+
+        case "$opc" in
+    
+            1) UUID=$(uuidgen)
+               echo -e "\n\033[1;32mUUID generado automáticamente:\033[1;97m $UUID\033[0m";
+               TIPO="auto";;
+            2) echo -ne "\n\033[1;37mPega tu UUID manual: \033[1;92m"
+               read UUID
+               [[ -z "$UUID" ]] && echo -e "\033[1;31m✗ UUID vacío\033[0m" && continue
+               # VALIDAR DUPLICADO
+               if grep -q "^$UUID|" /etc/SSHPlus/RegV2ray 2>/dev/null || grep -q "\"id\": \"$UUID\"" /etc/v2ray/config.json 2>/dev/null; then
+                   echo -e "\n\033[1;31m✗ ERROR: Este UUID ya existe en el servidor!\033[0m"
+                   echo -e "   No se permite duplicado.\n"
+                   sleep 3
+               
+                   clear
+                   echo -e "\E[44;1;37m          ➤ ADICIONAR USUARIO UUID V2RAY ➤         \E[0m\n"
+                   continue
+               fi
+               echo -e "\n\033[1;32mUUID aceptado:\033[1;97m $UUID\033[0m";
+               TIPO="manual";;
+            *) echo -e "\033[1;31m✗ Opción inválida\033[0m" && continue;;
+        esac
+
+        # Nick
+        while :;
+        do
+            echo -ne "\n\033[1;37mNombre de usuario (nick): \033[1;92m"
+            read nick
+            nick=$(echo "$nick" | sed 's/[^a-zA-Z0-9 -]//g' | xargs)
+            [[ ${#nick} -ge 2 && ${#nick} -le 20 ]] && break
+            echo -e "\033[1;31m✗ Entre 2 y 20 caracteres\033[0m"
+        done
+
+ 
+        # Días
+        while :;
+        do
+            echo -ne "\n\033[1;37mDías de validez (1-360): \033[1;92m"
+            read diasuser
+            [[ "$diasuser" =~ ^[0-9]+$ && "$diasuser" -ge 1 && "$diasuser" -le 360 ]] && break
+            echo -e "\033[1;31m✗ Valor inválido\033[0m"
+        done
+
+        valid=$(date '+%C%y-%m-%d' -d "+$diasuser days")
+       
+        datexp=$(date "+%d/%m/%Y" -d "+$diasuser days")
+        mailito=$(cat /dev/urandom | tr -dc 'a-z0-9' | head -c 10)
+
+        # Añadir al config.json (más seguro que el método viejo)
+        sed -i '/"clients": \[/a\            {\n                "id": "'"$UUID"'",\n                "alterId": 0,\n                "email": "'"$mailito"'@gmail.com"\n            },' /etc/v2ray/config.json
+
+        # Registrar: AÑADIDO TIPO (auto/manual)
+        echo "$UUID|$nick|$valid|$TIPO" >> /etc/SSHPlus/RegV2ray
+
+        # Reiniciar
+        v2ray restart >/dev/null 2>&1
+
+        clear
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e "      
+            \033[1;92mUSUARIO CREADO CON ÉXITO ✓\033[0m"
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e " UUID     → \033[1;97m$UUID\033[0m"
+        echo -e " Usuario  → \033[1;97m$nick\033[0m"
+        echo -e " Tipo     → \033[1;97m$TIPO\033[0m"
+        echo -e " Expira   → \033[1;97m$datexp\033[0m"
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e "\033[1;37mPresiona Enter para continuar...\033[0m"
+        read && break
+    
     done
-    echo -e "\e[91m >> Adicionar UUID: \e[92m$UUID "
-    while true; do
-         echo -ne "\e[91m >> Duração de UUID (Dias):\033[1;92m " && read diasuser
-         if [[ -z "$diasuser" ]]; then
-         echo -e "$msg17" && continue
-         elif [[ "$diasuser" != +([0-9]) ]]; then
-         echo -e "$msg08" && continue
-         elif [[ "$diasuser" -gt "360" ]]; then
-         echo -e "$msg09" && continue
-         fi 
-         break
-    done
-    #Lim
-    [[ $(cat /etc/passwd |grep $1: |grep -vi [a-z]$1 |grep -v [0-9]$1 > /dev/null) ]] && return 1
-    valid=$(date '+%C%y-%m-%d' -d " +$diasuser days") && datexp=$(date "+%F" -d " + $diasuser days")
-    echo -e "\e[91m >> Expira em : \e[92m$datexp "
-    ##Registro
-    echo "  $UUID | $nick | $valid " >> /etc/SSHPlus/RegV2ray
-    Fecha=`date +%d-%m-%y-%R`
-    cp /etc/SSHPlus/RegV2ray /etc/SSHPlus/v2ray/RegV2ray-"$Fecha"
+    fun_v2raymanager
+}
+    delusr () {
+    clear 
+    clear
+    invaliduuid () {
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\e[91m                    UUID INVALIDO \n"
+    echo -e "\033[1;37m• \033[1;33mEnter Para Continuar\033[1;31m" && read enter
+    fun_v2raymanager
+    }
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\E[44;1;37m            ELIMINAR USUARIO | UUID V2RAY             \E[0m"
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\e[97m               USUARIOS REGISTRADOS"
+    echo -e "\e[33m$(cat /etc/SSHPlus/RegV2ray|cut -d '|' -f2,1)" 
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -ne "\e[91m >> Digita UUID para eliminar:\n \033[1;92m " && read uuidel
+    [[ $(sed -n '/'${uuidel}'/=' /etc/v2ray/config.json|head -1) ]] || invaliduuid
+    lineP=$(sed -n '/'${uuidel}'/=' /etc/v2ray/config.json)
+    linePre=$(sed -n '/'${uuidel}'/=' /etc/SSHPlus/RegV2ray)
+    sed -i "${linePre}d" /etc/SSHPlus/RegV2ray
+    numl1=2
+    let resta=$lineP-$numl1
+    sed -i "${resta}d" /etc/v2ray/config.json
+    sed -i "${resta}d" /etc/v2ray/config.json
+    sed -i "${resta}d" /etc/v2ray/config.json
+    sed -i "${resta}d" /etc/v2ray/config.json
+    sed -i "${resta}d" /etc/v2ray/config.json
     v2ray restart > /dev/null 2>&1
     echo ""
-    v2ray info > /etc/SSHPlus/v2ray/confuuid.log
-    lineP=$(sed -n '/'${UUID}'/=' /etc/SSHPlus/v2ray/confuuid.log)
-    numl1=4
-    let suma=$lineP+$numl1
-    sed -n ${suma}p /etc/SSHPlus/v2ray/confuuid.log 
-    echo ""
-    sed -i "11 s;104.16.18.94%3A443;$nick;g" /etc/SSHPlus/v2ray/confuuid.log
-    cat /etc/SSHPlus/v2ray/confuuid.log  | sed -n '11 p'
-    echo "" 
-echo "APLICATIVO PARA ANDROID:"
-echo "Baixe no Link Abaixo 👇"
-echo "" 
-echo "App: https://play.google.com/store/apps/details?id=com.v2ray.ang" 
-echo "" 
-echo "" 
-echo "APLICATIVO PARA IPHONE:"
-echo "Baixe no Link Abaixo 👇"
-echo "" 
-echo "App: https://apps.apple.com/br/app/fair-vpn/id1533873488" 
     echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
-    echo -e "\e[92m           UUID ADICIONADO COM EXITO "
+    echo -e "\e[92m           UUID ELIMINADO COM EXITO "
+  
     echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
     echo -e "\033[1;37m• \033[1;33mEnter Para Continuar\033[1;31m" && read enter
     fun_v2raymanager
+    }
+
+    mosusr_kk() {
+    clear 
+    clear
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\E[44;1;37m            USUARIOS REGISTRADOS | UUID V2RAY             \E[0m"
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    # usersss=$(cat /etc/SSHPlus/RegV2ray|cut -d '|' -f1)
+    # cat /etc/SSHPlus/RegV2ray|cut -d'|'
+    # Se añade la columna TIPO (4to campo)
+    VPSsec=$(date +%s)
+    local HOST="/etc/SSHPlus/RegV2ray"
+    local HOST2="/etc/SSHPlus/RegV2ray"
+    local RETURN="$(cat $HOST|cut -d'|' -f2)"
+    local IDEUUID="$(cat $HOST|cut -d'|' -f1)"
+    if [[ -z $RETURN ]]; then
+    echo -e "----- NENHUM USUARIO REGISTRADO -----"
+    echo -e "\033[1;37m• \033[1;33mEnter Para Continuar\033[1;31m" && read enter
+    fun_v2raymanager
+    else
+    i=1
+    echo -e "\e[97m                 UUID               | USER | TIPO | EXPIRACION \e[93m"
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    while read hostreturn ; do
+    DateExp="$(cat /etc/SSHPlus/RegV2ray|grep -w "$hostreturn"|cut -d'|' -f3)"
+    Tipo="$(cat /etc/SSHPlus/RegV2ray|grep -w "$hostreturn"|cut -d'|' -f4)"
+    if [[ ! -z $DateExp ]]; then             
+    DataSec=$(date +%s --date="$DateExp")
+    [[ "$VPSsec" -gt "$DataSec" ]] && EXPTIME="\e[91m[EXPIRADO]\e[97m" || EXPTIME="\e[92m[$(($(($DataSec - $VPSsec)) / 86400))]\e[97m Dias"
+    else
+    EXPTIME="\e[91m[ S/R ]"
+    fi 
+    usris="$(cat /etc/SSHPlus/RegV2ray|grep -w "$hostreturn"|cut -d'|' -f2)"
+    local contador_secuencial+="\e[93m$hostreturn \e[97m|\e[93m$usris\e[97m|\e[93m$Tipo\e[97m|\e[93m $EXPTIME \n"          
+          if [[ $i -gt 30 ]]; then
+    	      echo -e "$contador_secuencial"
+    	  unset contador_secuencial
+    	  unset i
+    	  fi
+    let i++
+    done <<< "$IDEUUID"
+    [[ ! -z $contador_secuencial ]] && {
+    linesss=$(cat /etc/SSHPlus/RegV2ray | wc -l)
+    	      
+    echo -e "$contador_secuencial \n Numero de Registrados: $linesss"
+    	}
+    fi
+    echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+    echo -e "\033[1;37m• \033[1;33mEnter Para Continuar\033[1;31m" && read enter
+    fun_v2raymanager
+    }
+
+    # ==================== NUEVAS FUNCIONES DE EDICIÓN ====================
+
+    edit_days () {
+        local OLD_UUID="$1"
+        local NICK="$2"
+        local TIPO="$3"
+        
+        while :; do
+            echo -ne "\n\033[1;37mNuevos días de validez (1-360): \033[1;92m"
+            read diasuser
+            [[ "$diasuser" =~ ^[0-9]+$ && "$diasuser" -ge 1 && "$diasuser" -le 360 ]] && break
+            echo -e "\033[1;31m✗ Valor inválido\033[0m"
+        done
+        
+        local valid=$(date '+%C%y-%m-%d' -d "+$diasuser days")
+        local datexp=$(date "+%d/%m/%Y" -d "+$diasuser days")
+        
+        # El registro ahora tiene 4 campos: UUID|NICK|EXPIRA|TIPO
+        local NEW_LINE="${OLD_UUID}|${NICK}|${valid}|${TIPO}"
+        
+        # Reemplazar la línea en la base de datos
+        local linePre=$(sed -n '/'${OLD_UUID}'/=' /etc/SSHPlus/RegV2ray)
+        sed -i "${linePre}c\\${NEW_LINE}" /etc/SSHPlus/RegV2ray
+        
+        clear
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e "         \033[1;92mDIAS DE VALIDEZ ACTUALIZADOS ✓\033[0m"
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e " Usuario  → \033[1;97m$NICK\033[0m"
+        echo -e " Expira   → \033[1;97m$datexp\033[0m"
+        echo -e "\033[0;34m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\033[0m"
+        echo -e "\033[1;37mPresiona Enter para continuar...\033[0m"
+        read
+        fun_v2raymanager
     }
 
     delusr () {
