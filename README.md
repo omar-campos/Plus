@@ -1,8 +1,8 @@
-# SEJA BEM VINDO(A)! 🤝
+# SEJA BIEMBENIDO(A)! 🤝
 
 # SSH-PLUS
 
-# @swittecnologia
+# @shume22
 
 *PROJETO EM ANDAMENTO...
 
